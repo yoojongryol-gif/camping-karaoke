@@ -212,6 +212,7 @@
       <input id="apiKey" type="text" placeholder="AIza... 로 시작하는 키 입력" autocapitalize="off" autocorrect="off" spellcheck="false">
     </div>
     <button class="saveBtn" id="btnSaveKey">저장</button>
+    <button class="saveBtn" id="btnRefresh" style="background:#2a2a3a;margin-top:10px;">🔄 앱 새로고침 (최신 버전·차트 받기)</button>
     <div class="help">
       <b>API 키 발급 (무료, 1회만)</b>
       <ol>
@@ -515,6 +516,7 @@ document.getElementById('btnPause').onclick = ()=>{ if(!player)return; const s=p
 document.getElementById('btnNext').onclick = playNext;
 document.getElementById('btnClose').onclick = closePlayer;
 document.getElementById('btnSaveKey').onclick = ()=>{ localStorage.setItem('yt_api_key', document.getElementById('apiKey').value.trim()); toast('저장했어요'); switchView('search'); };
+document.getElementById('btnRefresh').onclick = ()=>{ toast('새로고침 중…'); location.href = location.pathname + '?r=' + Date.now(); };
 
 /* ---------- 유틸 ---------- */
 function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
