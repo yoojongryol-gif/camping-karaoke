@@ -194,6 +194,8 @@ const LS = {
 };
 let player = null, ytReady = false, queue = [], current = null, wakeLock = null;
 let lastResults = [], candidates = [], candIdx = 0, fallbackTried = false;
+// 금영(KY) 공식 채널 — 임베드 재생 허용. TJ 등 차단 채널보다 우선 노출.
+const KY_CHANNELS = ['UCDqaUIUSJP5EVMEI178Zfag','UCOLHNWPAjSmhE4jWoWSp4kA'];
 
 /* ---------- YouTube IFrame ---------- */
 function onYouTubeIframeAPIReady(){
@@ -232,7 +234,9 @@ async function search(query){
     if(!items.length){ box.innerHTML = '<div class="empty">결과가 없어요</div>'; return; }
     box.innerHTML = '';
     lastResults = items.map(i=>({ id:i.id.videoId, title:decode(i.snippet.title), ch:decode(i.snippet.channelTitle),
-                  thumb:i.snippet.thumbnails.medium.url }));
+                  channelId:i.snippet.channelId, thumb:i.snippet.thumbnails.medium.url }));
+    // 금영(임베드 OK) 영상을 맨 위로 — 사용자가 누르는 첫 곡이 바로 재생되도록
+    lastResults.sort((a,b)=> (KY_CHANNELS.includes(b.channelId)?1:0) - (KY_CHANNELS.includes(a.channelId)?1:0));
     lastResults.forEach(v=> box.appendChild(songCard(v)));
   }catch(err){ box.innerHTML = '<div class="empty">네트워크 오류<br><small>인터넷 연결을 확인하세요</small></div>'; }
 }
