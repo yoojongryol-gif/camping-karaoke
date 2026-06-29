@@ -193,6 +193,7 @@ const LS = {
   setFavs: v => localStorage.setItem('favs', JSON.stringify(v)),
 };
 let player = null, ytReady = false, queue = [], current = null, wakeLock = null;
+let lastResults = [], candidates = [], candIdx = 0, fallbackTried = false;
 
 /* ---------- YouTube IFrame ---------- */
 function onYouTubeIframeAPIReady(){
@@ -203,9 +204,11 @@ function onYouTubeIframeAPIReady(){
       onReady: () => { ytReady = true; },
       onStateChange: e => {
         if(e.data === YT.PlayerState.ENDED) playNext();
-        if(e.data === YT.PlayerState.PLAYING){ requestWake(); document.getElementById('btnPause').textContent='⏸'; }
+        if(e.data === YT.PlayerState.PLAYING){ fallbackTried=false; requestWake(); document.getElementById('btnPause').textContent='⏸'; }
         if(e.data === YT.PlayerState.PAUSED){ document.getElementById('btnPause').textContent='▶'; }
-      }
+      },
+      // 101·150 = 외부 임베드 차단(TJ 등), 100 = 삭제, 2 = 잘못된 ID, 5 = HTML5 오류
+      onError: e => { if([101,150,100,2,5].includes(e.data)) tryFallback(); }
     }
   });
 }
@@ -217,7 +220,7 @@ async function search(query){
   const box = document.getElementById('results');
   box.innerHTML = '<div class="loading">검색 중…</div>';
   const q = encodeURIComponent(query + (query.includes('노래방') ? '' : ' 노래방'));
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&maxResults=24&q=${q}&key=${key}`;
+  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&videoSyndicated=true&maxResults=24&q=${q}&key=${key}`;
   try{
     const r = await fetch(url);
     const d = await r.json();
@@ -225,11 +228,9 @@ async function search(query){
     const items = (d.items||[]).filter(i=>i.id&&i.id.videoId);
     if(!items.length){ box.innerHTML = '<div class="empty">결과가 없어요</div>'; return; }
     box.innerHTML = '';
-    items.forEach(i=>{
-      const v = { id:i.id.videoId, title:decode(i.snippet.title), ch:decode(i.snippet.channelTitle),
-                  thumb:i.snippet.thumbnails.medium.url };
-      box.appendChild(songCard(v));
-    });
+    lastResults = items.map(i=>({ id:i.id.videoId, title:decode(i.snippet.title), ch:decode(i.snippet.channelTitle),
+                  thumb:i.snippet.thumbnails.medium.url }));
+    lastResults.forEach(v=> box.appendChild(songCard(v)));
   }catch(err){ box.innerHTML = '<div class="empty">네트워크 오류<br><small>인터넷 연결을 확인하세요</small></div>'; }
 }
 
@@ -253,12 +254,41 @@ function songCard(v){
 /* ---------- 재생 / 예약 ---------- */
 function playNow(v){
   if(!ytReady){ toast('플레이어 준비 중…'); return; }
+  // 폴백 후보 = 이 영상 + 같은 검색결과의 다른 영상들 (막히면 자동 전환)
+  const others = lastResults.filter(x=>x.id!==v.id);
+  candidates = [v, ...others];
+  candIdx = 0; fallbackTried = false;
+  startPlay(v);
+}
+function startPlay(v){
   current = v;
   document.getElementById('playerWrap').classList.remove('hidden');
   document.getElementById('npTitle').textContent = v.title;
   player.loadVideoById(v.id);
   player.playVideo();
   requestWake();
+}
+async function tryFallback(){
+  candIdx++;
+  if(candIdx < candidates.length){
+    toast('막힌 영상이라 다른 영상으로 바꿔요');
+    startPlay(candidates[candIdx]);
+    return;
+  }
+  // 후보 소진 → 곡 제목으로 1회 재검색해서 보충
+  if(!fallbackTried && current){
+    fallbackTried = true;
+    const key = LS.key();
+    const title = current.title.replace(/\[.*?\]/g,'').replace(/[\/|].*/,'').trim();
+    try{
+      const r = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&videoSyndicated=true&maxResults=15&q=${encodeURIComponent(title+' 노래방')}&key=${key}`);
+      const d = await r.json();
+      const seen = new Set(candidates.map(c=>c.id));
+      const add = (d.items||[]).filter(i=>i.id&&i.id.videoId).map(i=>({id:i.id.videoId,title:decode(i.snippet.title),ch:decode(i.snippet.channelTitle),thumb:i.snippet.thumbnails.medium.url})).filter(f=>!seen.has(f.id));
+      if(add.length){ candidates = candidates.concat(add); candIdx++; toast('다른 영상으로 바꿔요'); startPlay(candidates[candIdx]); return; }
+    }catch(e){}
+  }
+  toast('재생 가능한 영상을 못 찾았어요 😢');
 }
 function addQueue(v){
   queue.push(v); updateQueue();
