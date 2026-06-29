@@ -100,6 +100,27 @@
           transition:opacity .25s; pointer-events:none; border:1px solid var(--line); }
   .toast.show{ opacity:1; }
   .loading{ text-align:center; color:var(--sub); padding:30px; }
+
+  /* 닫기 버튼 */
+  .npBtn.close{ background:#2a2a3a; color:#ff6b8a; font-size:18px; }
+
+  /* 재생 중 패널 (예약 + 애창곡 같이) */
+  #livePanel.hidden{ display:none; }
+  #livePanel{ margin-bottom:8px; }
+  .lpSection{ margin-bottom:14px; }
+  .lpHead{ font-size:14px; font-weight:700; color:var(--txt); margin:4px 2px 8px;
+           display:flex; align-items:center; gap:8px; }
+  .lpHead span{ font-size:12px; font-weight:500; color:var(--gold); }
+  .lpHead .lpHint{ color:var(--sub); margin-left:auto; }
+  .lpList{ display:flex; flex-direction:column; gap:6px; }
+  .lpItem{ display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--line);
+           border-radius:10px; padding:9px 12px; }
+  .lpItem .lpName{ flex:1; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lpItem .lpX{ background:none; border:none; color:var(--sub); font-size:18px; width:30px; flex-shrink:0; }
+  .lpItem .lpAdd{ background:var(--accent2); border:none; color:#fff; border-radius:8px; font-size:12px;
+                  font-weight:700; padding:6px 10px; flex-shrink:0; }
+  .lpEmpty{ color:var(--sub); font-size:13px; padding:10px 2px; }
+  .lpDivider{ height:1px; background:var(--line); margin:4px 0 14px; }
 </style>
 </head>
 <body>
@@ -108,6 +129,7 @@
 <div id="playerWrap" class="hidden">
   <div id="player"></div>
   <div id="nowPlaying">
+    <button class="npBtn close" id="btnClose">✕</button>
     <div id="npTitle">재생 중인 곡 없음</div>
     <span id="queueCount"></span>
     <button class="npBtn" id="btnPause">⏸</button>
@@ -117,6 +139,18 @@
 
 <!-- 본문 -->
 <div id="main">
+  <!-- 재생 중: 다음 예약 + 애창곡 한 화면에 -->
+  <div id="livePanel" class="hidden">
+    <div class="lpSection">
+      <div class="lpHead">📋 다음 예약 <span id="lpQn">0곡</span></div>
+      <div id="lpQueue" class="lpList"></div>
+    </div>
+    <div class="lpSection">
+      <div class="lpHead">⭐ 애창곡 <span class="lpHint">탭하면 예약</span></div>
+      <div id="lpFavs" class="lpList"></div>
+    </div>
+    <div class="lpDivider"></div>
+  </div>
   <!-- 검색 -->
   <div class="view active" id="view-search">
     <div class="searchBar">
@@ -277,6 +311,37 @@ function startPlay(v){
   player.loadVideoById(v.id);
   player.playVideo();
   requestWake();
+  document.getElementById('livePanel').classList.remove('hidden');
+  renderLivePanel();
+}
+function closePlayer(){
+  try{ player.stopVideo(); }catch(e){}
+  current = null;
+  document.getElementById('playerWrap').classList.add('hidden');
+  document.getElementById('livePanel').classList.add('hidden');
+  document.getElementById('npTitle').textContent = '재생 중인 곡 없음';
+  releaseWake();
+}
+function renderLivePanel(){
+  // 다음 예약
+  document.getElementById('lpQn').textContent = queue.length + '곡';
+  const lq = document.getElementById('lpQueue');
+  if(!queue.length){ lq.innerHTML = '<div class="lpEmpty">예약된 곡 없음 — 검색에서 ＋ 로 담아요</div>'; }
+  else { lq.innerHTML=''; queue.forEach((v,idx)=>{
+    const e=document.createElement('div'); e.className='lpItem';
+    e.innerHTML = `<span class="lpName">${idx+1}. ${esc(v.title)}</span><button class="lpX">✕</button>`;
+    e.querySelector('.lpX').onclick = ()=>{ queue.splice(idx,1); updateQueue(); };
+    lq.appendChild(e);
+  }); }
+  // 애창곡 (탭하면 예약)
+  const favs = LS.favs(); const lf = document.getElementById('lpFavs');
+  if(!favs.length){ lf.innerHTML = '<div class="lpEmpty">애창곡 없음 — 검색에서 ★ 로 담아요</div>'; }
+  else { lf.innerHTML=''; favs.forEach(v=>{
+    const e=document.createElement('div'); e.className='lpItem';
+    e.innerHTML = `<span class="lpName">${esc(v.title)}</span><button class="lpAdd">＋예약</button>`;
+    e.querySelector('.lpAdd').onclick = ()=> addQueue(v);
+    lf.appendChild(e);
+  }); }
 }
 async function tryFallback(){
   candIdx++;
@@ -310,6 +375,7 @@ function playNext(){
   else { current=null; document.getElementById('npTitle').textContent='예약 목록이 비었어요'; releaseWake(); }
 }
 function updateQueue(){
+  renderLivePanel();
   const n = queue.length;
   document.getElementById('queueCount').textContent = n ? `다음 ${n}곡` : '';
   const b = document.getElementById('qBadge');
@@ -365,6 +431,7 @@ document.getElementById('btnSearch').onclick = ()=>{ const q=document.getElement
 document.getElementById('q').addEventListener('keydown', e=>{ if(e.key==='Enter'){ const q=e.target.value.trim(); if(q) search(q); }});
 document.getElementById('btnPause').onclick = ()=>{ if(!player)return; const s=player.getPlayerState(); s===YT.PlayerState.PLAYING?player.pauseVideo():player.playVideo(); };
 document.getElementById('btnNext').onclick = playNext;
+document.getElementById('btnClose').onclick = closePlayer;
 document.getElementById('btnSaveKey').onclick = ()=>{ localStorage.setItem('yt_api_key', document.getElementById('apiKey').value.trim()); toast('저장했어요'); switchView('search'); };
 
 /* ---------- 유틸 ---------- */
