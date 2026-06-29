@@ -204,7 +204,10 @@ function onYouTubeIframeAPIReady(){
       onReady: () => { ytReady = true; },
       onStateChange: e => {
         if(e.data === YT.PlayerState.ENDED) playNext();
-        if(e.data === YT.PlayerState.PLAYING){ fallbackTried=false; requestWake(); document.getElementById('btnPause').textContent='⏸'; }
+        if(e.data === YT.PlayerState.PLAYING){ fallbackTried=false; requestWake();
+          // 재생 시작 → 음소거 해제하고 소리 켜기 (자동재생 우회 마무리)
+          setTimeout(()=>{ try{ player.unMute(); player.setVolume(100); }catch(e){} }, 300);
+          document.getElementById('btnPause').textContent='⏸'; }
         if(e.data === YT.PlayerState.PAUSED){ document.getElementById('btnPause').textContent='▶'; }
       },
       // 101·150 = 외부 임베드 차단(TJ 등), 100 = 삭제, 2 = 잘못된 ID, 5 = HTML5 오류
@@ -264,6 +267,9 @@ function startPlay(v){
   current = v;
   document.getElementById('playerWrap').classList.remove('hidden');
   document.getElementById('npTitle').textContent = v.title;
+  // 자동재생 정책 우회: 음소거로 시작 → 재생 시작되면 onStateChange에서 소리 켜기
+  // (폴백·예약곡은 제스처 밖에서 재생돼 소리 있으면 막히므로 필수)
+  try{ player.mute(); }catch(e){}
   player.loadVideoById(v.id);
   player.playVideo();
   requestWake();
