@@ -1,0 +1,15 @@
+{
+  "name": "캠핑 노래방",
+  "short_name": "노래방",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#0b0b12",
+  "theme_color": "#0b0b12",
+  "lang": "ko",
+  "icons": [
+    {"src": "apple-touch-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "apple-touch-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
