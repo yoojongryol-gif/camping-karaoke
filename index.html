@@ -24,9 +24,10 @@
   #nowPlaying{ display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--card);
                border-bottom:1px solid var(--line); }
   #npTitle{ font-size:14px; font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .npBtn{ background:var(--card2); border:none; color:var(--txt); width:46px; height:46px; border-radius:12px;
-          font-size:20px; flex-shrink:0; }
+  .npBtn{ background:var(--card2); border:none; color:var(--txt); width:42px; height:44px; border-radius:11px;
+          font-size:17px; flex-shrink:0; }
   .npBtn.next{ background:var(--accent); }
+  .npBtn.jump{ color:var(--gold); }
   #queueCount{ font-size:12px; color:var(--gold); padding:0 6px; }
 
   /* 본문 */
@@ -101,8 +102,8 @@
   .toast.show{ opacity:1; }
   .loading{ text-align:center; color:var(--sub); padding:30px; }
 
-  /* 닫기 버튼 */
-  .npBtn.close{ background:#2a2a3a; color:#ff6b8a; font-size:18px; }
+  /* 정지(취소) 버튼 */
+  .npBtn.stop{ background:#2a2a3a; color:#ff6b8a; }
 
   /* 재생 중 패널 (예약 + 애창곡 같이) */
   #livePanel.hidden{ display:none; }
@@ -150,11 +151,12 @@
 <div id="playerWrap" class="hidden">
   <div id="player"></div>
   <div id="nowPlaying">
-    <button class="npBtn close" id="btnClose">✕</button>
+    <button class="npBtn stop" id="btnClose" title="정지">⏹</button>
     <div id="npTitle">재생 중인 곡 없음</div>
     <span id="queueCount"></span>
-    <button class="npBtn" id="btnPause">⏸</button>
-    <button class="npBtn next" id="btnNext">⏭</button>
+    <button class="npBtn jump" id="btnJump" title="간주 점프">⏩</button>
+    <button class="npBtn" id="btnPause" title="일시정지">⏸</button>
+    <button class="npBtn next" id="btnNext" title="다음 곡">⏭</button>
   </div>
 </div>
 
@@ -544,6 +546,7 @@ document.getElementById('q').addEventListener('keydown', e=>{ if(e.key==='Enter'
 document.getElementById('btnPause').onclick = ()=>{ if(!player)return; const s=player.getPlayerState(); s===YT.PlayerState.PLAYING?player.pauseVideo():player.playVideo(); };
 document.getElementById('btnNext').onclick = playNext;
 document.getElementById('btnClose').onclick = closePlayer;
+document.getElementById('btnJump').onclick = ()=>{ try{ player.seekTo(player.getCurrentTime()+12, true); player.playVideo(); toast('간주 점프 ⏩'); }catch(e){} };
 document.getElementById('btnSaveKey').onclick = ()=>{ localStorage.setItem('yt_api_key', document.getElementById('apiKey').value.trim()); toast('저장했어요'); switchView('search'); };
 document.getElementById('btnRefresh').onclick = ()=>{ toast('새로고침 중…'); location.href = location.pathname + '?r=' + Date.now(); };
 
