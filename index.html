@@ -481,9 +481,17 @@ const CHART_KARAOKE = [
   "형 노라조","평행선 문희옥","All For You 정은지","Flashback 엔플라잉","사랑 Two 윤도현"
 ];
 let chartType = 'new';
-// 정렬 점수: 키 모드면 키(남자/여자) 매칭 +2 우선, 금영(임베드OK) +1
-//  → 키 모드: 키+금영 > 키 > 금영 / 기본 모드: 금영 우선. 막힌 영상은 폴백이 보정.
-function rankScore(v){ let s=0; if(keyMode && (v.title||'').includes(keyMode)) s+=2; if(KY_CHANNELS.includes(v.channelId)) s+=1; return s; }
+// 정렬 점수: 금영(임베드OK+MR확실) > 노래방MR 키워드 > 키매칭 / 원곡·가사 영상은 감점
+//  → 노래방 반주(MR)가 아닌 원곡/가사/MV를 첫 곡으로 잡는 것을 방지.
+function rankScore(v){
+  let s = 0;
+  const t = (v.title||'') + ' ' + (v.ch||'');
+  if(KY_CHANNELS.includes(v.channelId)) s += 3;                               // 금영 = 임베드OK + MR
+  if(/노래방|가라오케|karaoke|반주|\bMR\b|KY\.|TJ\s?노래방|금영|태진/i.test(t)) s += 2; // 노래방 반주 키워드
+  if(keyMode && (v.title||'').includes(keyMode)) s += 2;                       // 키 매칭
+  if(/가사|lyrics|뮤직비디오|\bMV\b|m\/v|official|오피셜|官方|cover|커버/i.test(t)) s -= 3; // 원곡/가사/MV/커버 감점
+  return s;
+}
 async function fetchFirst(title){
   const key = LS.key();
   if(!key){ toast('먼저 설정에서 API 키를 입력하세요'); switchView('set'); return null; }
