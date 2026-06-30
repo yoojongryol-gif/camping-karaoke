@@ -489,7 +489,7 @@ function rankScore(v){
   if(KY_CHANNELS.includes(v.channelId)) s += 3;                               // 금영 = 임베드OK + MR
   if(/노래방|가라오케|karaoke|반주|\bMR\b|KY\.|TJ\s?노래방|금영|태진/i.test(t)) s += 2; // 노래방 반주 키워드
   if(keyMode && (v.title||'').includes(keyMode)) s += 2;                       // 키 매칭
-  if(/가사|lyrics|뮤직비디오|\bMV\b|m\/v|official|오피셜|官方|cover|커버/i.test(t)) s -= 3; // 원곡/가사/MV/커버 감점
+  if(/가사|lyrics|뮤직비디오|\bMV\b|m\/v|official|오피셜|官方|cover|커버|라이브|\blive\b|일반인|불러보|리액션|reaction/i.test(t)) s -= 3; // 원곡/가사/MV/커버/라이브/일반인 감점
   return s;
 }
 async function fetchFirst(title){
