@@ -310,8 +310,8 @@ async function search(query){
     box.innerHTML = '';
     lastResults = items.map(i=>({ id:i.id.videoId, title:decode(i.snippet.title), ch:decode(i.snippet.channelTitle),
                   channelId:i.snippet.channelId, thumb:i.snippet.thumbnails.medium.url }));
-    // 금영(임베드 OK) 영상을 맨 위로 — 사용자가 누르는 첫 곡이 바로 재생되도록
-    lastResults.sort((a,b)=> (KY_CHANNELS.includes(b.channelId)?1:0) - (KY_CHANNELS.includes(a.channelId)?1:0));
+    // 금영(임베드 OK) + 키 매칭 영상을 맨 위로
+    lastResults.sort((a,b)=> rankScore(b)-rankScore(a));
     lastResults.forEach(v=> box.appendChild(songCard(v)));
   }catch(err){ box.innerHTML = '<div class="empty">네트워크 오류<br><small>인터넷 연결을 확인하세요</small></div>'; }
 }
@@ -475,6 +475,8 @@ const CHART_KARAOKE = [
   "형 노라조","평행선 문희옥","All For You 정은지","Flashback 엔플라잉","사랑 Two 윤도현"
 ];
 let chartType = 'new';
+// 정렬 점수: 금영(임베드OK) +2, 키(남자/여자) 매칭 +1 → 금영+키매칭이 최상위
+function rankScore(v){ let s=0; if(KY_CHANNELS.includes(v.channelId)) s+=2; if(keyMode && (v.title||'').includes(keyMode)) s+=1; return s; }
 async function fetchFirst(title){
   const key = LS.key();
   if(!key){ toast('먼저 설정에서 API 키를 입력하세요'); switchView('set'); return null; }
@@ -484,7 +486,7 @@ async function fetchFirst(title){
     const d = await r.json();
     if(d.error) return null;
     const items = (d.items||[]).filter(i=>i.id&&i.id.videoId).map(i=>({id:i.id.videoId,title:decode(i.snippet.title),ch:decode(i.snippet.channelTitle),channelId:i.snippet.channelId,thumb:i.snippet.thumbnails.medium.url}));
-    items.sort((a,b)=>(KY_CHANNELS.includes(b.channelId)?1:0)-(KY_CHANNELS.includes(a.channelId)?1:0));
+    items.sort((a,b)=> rankScore(b)-rankScore(a));
     return items;
   }catch(e){ return null; }
 }
