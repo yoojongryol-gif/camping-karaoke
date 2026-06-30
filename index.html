@@ -24,7 +24,8 @@
   #playerWrap.hidden{ display:none; }
   #player{ display:block; width:100%; max-width:calc(46vh * 16 / 9); margin:0 auto; aspect-ratio:16/9; }
   #nowPlaying{ display:flex; align-items:center; gap:6px; padding:9px 10px; background:var(--card);
-               border-bottom:1px solid var(--line); }
+               border-bottom:1px solid var(--line); flex-shrink:0; }
+  #nowPlaying.hidden{ display:none; }
   #npTitle{ font-size:13px; font-weight:600; flex:1; min-width:40px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .npBtn{ background:var(--card2); border:none; color:var(--txt); width:38px; height:42px; border-radius:10px;
           font-size:15px; flex-shrink:0; }
@@ -152,14 +153,14 @@
 <!-- 플레이어 -->
 <div id="playerWrap" class="hidden">
   <div id="player"></div>
-  <div id="nowPlaying">
-    <button class="npBtn stop" id="btnClose" title="정지">⏹</button>
-    <div id="npTitle">재생 중인 곡 없음</div>
-    <button class="npBtn" id="btnBack" title="되감기 10초">⏪</button>
-    <button class="npBtn jump" id="btnJump" title="빨리감기 15초">⏩</button>
-    <button class="npBtn" id="btnPause" title="일시정지">⏸</button>
-    <button class="npBtn next" id="btnNext" title="다음 곡">⏭</button>
-  </div>
+</div>
+<div id="nowPlaying" class="hidden">
+  <button class="npBtn stop" id="btnClose" title="정지">⏹</button>
+  <div id="npTitle">재생 중인 곡 없음</div>
+  <button class="npBtn" id="btnBack" title="되감기 10초">⏪</button>
+  <button class="npBtn jump" id="btnJump" title="빨리감기 15초">⏩</button>
+  <button class="npBtn" id="btnPause" title="일시정지">⏸</button>
+  <button class="npBtn next" id="btnNext" title="다음 곡">⏭</button>
 </div>
 
 <!-- 본문 -->
@@ -349,6 +350,7 @@ function playNow(v){
 function startPlay(v){
   current = v;
   document.getElementById('playerWrap').classList.remove('hidden');
+  document.getElementById('nowPlaying').classList.remove('hidden');
   document.getElementById('npTitle').textContent = v.title;
   // 자동재생 정책 우회: 음소거로 시작 → 재생 시작되면 onStateChange에서 소리 켜기
   // (폴백·예약곡은 제스처 밖에서 재생돼 소리 있으면 막히므로 필수)
@@ -363,6 +365,7 @@ function closePlayer(){
   try{ player.stopVideo(); }catch(e){}
   current = null;
   document.getElementById('playerWrap').classList.add('hidden');
+  document.getElementById('nowPlaying').classList.add('hidden');
   document.getElementById('livePanel').classList.add('hidden');
   document.getElementById('npTitle').textContent = '재생 중인 곡 없음';
   releaseWake();
