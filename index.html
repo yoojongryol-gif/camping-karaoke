@@ -172,6 +172,7 @@
       <button class="keyBtn active" data-key="">기본</button>
       <button class="keyBtn" data-key="남자키">남자키</button>
       <button class="keyBtn" data-key="여자키">여자키</button>
+      <button class="keyBtn active" id="melBtn" style="flex:1.4">🎹 멜로디 ON</button>
     </div>
     <div class="lpSection">
       <div class="lpHead">📋 다음 예약 <span id="lpQn">0곡</span></div>
@@ -483,9 +484,12 @@ const CHART_KARAOKE = [
 let chartType = 'new';
 // 정렬 점수: 금영(임베드OK+MR확실) > 노래방MR 키워드 > 키매칭 / 원곡·가사 영상은 감점
 //  → 노래방 반주(MR)가 아닌 원곡/가사/MV를 첫 곡으로 잡는 것을 방지.
+let melodyOn = localStorage.getItem('ck.melody') !== '0';  // 기본 = 멜로디 가이드 포함 (2026-07-11 사장님: MR만 잡히니 노래가 이상함)
 function rankScore(v){
   let s = 0;
   const t = (v.title||'') + ' ' + (v.ch||'');
+  const noMel = /멜로디\s*제거|멜로디제거|MR\s*버전|\(MR\)|Instrumental/i.test(t); // 멜로디 없는 반주 표기
+  if(melodyOn ? !noMel : noMel) s += 2; else s -= 3;                          // 멜로디 설정과 맞는 버전 우선
   if(KY_CHANNELS.includes(v.channelId)) s += 3;                               // 금영 = 임베드OK + MR
   if(/노래방|가라오케|karaoke|반주|\bMR\b|KY\.|TJ\s?노래방|금영|태진/i.test(t)) s += 2; // 노래방 반주 키워드
   if(keyMode && (v.title||'').includes(keyMode)) s += 2;                       // 키 매칭
@@ -496,7 +500,7 @@ async function fetchFirst(title){
   const key = LS.key();
   if(!key){ toast('먼저 설정에서 API 키를 입력하세요'); switchView('set'); return null; }
   try{
-    const q = encodeURIComponent((title+' '+keyMode+' 노래방').replace(/\s+/g,' ').trim());
+    const q = encodeURIComponent((title+' '+keyMode+' 노래방'+(melodyOn?'':' 멜로디제거')).replace(/\s+/g,' ').trim());
     const r = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&videoSyndicated=true&maxResults=12&q=${q}&key=${key}`);
     const d = await r.json();
     if(d.error) return null;
@@ -552,7 +556,17 @@ document.querySelectorAll('.ctBtn').forEach(b=> b.onclick = ()=>{
   document.querySelectorAll('.ctBtn').forEach(x=> x.classList.toggle('active', x===b));
   renderChart();
 });
-document.querySelectorAll('.keyBtn').forEach(b=> b.onclick = ()=> setKey(b.dataset.key));
+document.querySelectorAll('.keyBtn').forEach(b=>{ if(b.id!=='melBtn') b.onclick = ()=> setKey(b.dataset.key); });
+document.getElementById('melBtn').onclick = ()=>{
+  melodyOn = !melodyOn;
+  localStorage.setItem('ck.melody', melodyOn?'1':'0');
+  const b = document.getElementById('melBtn');
+  b.textContent = melodyOn ? '🎹 멜로디 ON' : '🎹 멜로디 OFF';
+  b.classList.toggle('active', melodyOn);
+  toast(melodyOn ? '멜로디 가이드 있는 반주로 불러요' : '멜로디 없는 MR로 불러요');
+  if(current && lastQuery){ playSong(lastQuery); }
+};
+(function(){ const b=document.getElementById('melBtn'); if(!melodyOn){ b.textContent='🎹 멜로디 OFF'; b.classList.remove('active'); } })();
 document.getElementById('btnSearch').onclick = ()=>{ const q=document.getElementById('q').value.trim(); if(q) search(q); };
 document.getElementById('q').addEventListener('keydown', e=>{ if(e.key==='Enter'){ const q=e.target.value.trim(); if(q) search(q); }});
 document.getElementById('btnPause').onclick = ()=>{ if(!player)return; const s=player.getPlayerState(); s===YT.PlayerState.PLAYING?player.pauseVideo():player.playVideo(); };
