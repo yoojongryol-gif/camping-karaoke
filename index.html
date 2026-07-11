@@ -482,6 +482,15 @@ const CHART_KARAOKE = [
   "형 노라조","평행선 문희옥","All For You 정은지","Flashback 엔플라잉","사랑 Two 윤도현"
 ];
 let chartType = 'new';
+/* 차트 자동 갱신 (2026-07-11): chart.json을 주 1회 서버 크론이 갱신 — 실패 시 내장 리스트 폴백 */
+let CHARTS = { new: CHART_NEW, karaoke: CHART_KARAOKE }, chartUpdated = '';
+fetch('chart.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).then(d => {
+  if (!d) return;
+  if (Array.isArray(d.new) && d.new.length >= 20) CHARTS.new = d.new;
+  if (Array.isArray(d.karaoke) && d.karaoke.length >= 10) CHARTS.karaoke = d.karaoke;
+  chartUpdated = d.updated || '';
+  if (document.getElementById('chartList')) renderChart();
+}).catch(() => {});
 // 정렬 점수: 금영(임베드OK+MR확실) > 노래방MR 키워드 > 키매칭 / 원곡·가사 영상은 감점
 //  → 노래방 반주(MR)가 아닌 원곡/가사/MV를 첫 곡으로 잡는 것을 방지.
 let melodyOn = localStorage.getItem('ck.melody') !== '0';  // 기본 = 멜로디 가이드 포함 (2026-07-11 사장님: MR만 잡히니 노래가 이상함)
@@ -519,10 +528,10 @@ function setKey(mode){
   if(current && lastQuery){ playSong(lastQuery); }
 }
 function renderChart(){
-  document.getElementById('chartHint').textContent = chartType==='new'
+  document.getElementById('chartHint').textContent = (chartType==='new'
     ? '멜론 차트 기준 · 곡을 누르면 노래방 영상으로 재생'
-    : '노래방 인기곡 기준 · 곡을 누르면 바로 재생';
-  const data = chartType==='new' ? CHART_NEW : CHART_KARAOKE;
+    : '노래방 인기곡 기준 · 곡을 누르면 바로 재생') + (chartUpdated && chartUpdated!=='seed' ? ' · ' + chartUpdated + ' 갱신' : '');
+  const data = chartType==='new' ? CHARTS.new : CHARTS.karaoke;
   const box = document.getElementById('chartList');
   box.innerHTML = '';
   data.forEach((song,idx)=>{
