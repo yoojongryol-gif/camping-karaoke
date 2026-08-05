@@ -23,7 +23,10 @@
   html{ background:#000; }
   body{ background:var(--bg); color:var(--txt); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
         display:flex; flex-direction:column; height:100vh; height:100dvh; overflow:hidden;
-        max-width:680px; margin:0 auto; }
+        max-width:680px; margin:0 auto;
+        /* 2026-08-05: 노치/다이나믹 아일랜드 겹침 수리 — status-bar-style black-translucent라 앱이
+           상태바 밑으로 그려지므로 상단 safe-area만큼 밀어줘야 함(하단은 #tabs가 이미 처리 중이었음) */
+        padding-top:env(safe-area-inset-top); }
 
   /* 플레이어 — 가로화면에서도 컨트롤이 보이도록 영상 높이 제한(46vh) + 중앙 레터박스 */
   #playerWrap{ background:#000; position:relative; width:100%; flex-shrink:0; }
@@ -541,7 +544,9 @@ async function queueSong(title){ const items = await fetchFirst(title); if(items
 async function favSong(title){ const items = await fetchFirst(title); if(items&&items.length){ const v=items[0]; let favs=LS.favs(); if(favs.some(f=>f.id===v.id)){ toast('이미 애창곡이에요'); } else { favs.unshift(v); LS.setFavs(favs); toast('⭐ 애창곡에 담았어요'); } } else toast('영상을 못 찾았어요 😢'); }
 function setKey(mode){
   keyMode = (keyMode===mode) ? '' : mode;   // 같은 키 다시 누르면 기본으로
-  document.querySelectorAll('.keyBtn').forEach(b=> b.classList.toggle('active', b.dataset.key===keyMode));
+  // 2026-08-05: 셀렉터가 melBtn까지 같이 잡아서(멜로디 버튼도 class="keyBtn") 키를 누를 때마다
+  // 멜로디 ON 하이라이트가 엉뚱하게 꺼지던 버그 — data-key 속성이 있는 "키" 버튼만 골라 갱신
+  document.querySelectorAll('.keyBtn[data-key]').forEach(b=> b.classList.toggle('active', b.dataset.key===keyMode));
   // 재생 중이면 현재 곡을 새 키 버전으로 즉시 전환
   if(current && lastQuery){ playSong(lastQuery); }
 }

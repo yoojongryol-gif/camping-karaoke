@@ -3,7 +3,7 @@
    (회사 반복 교훈: 구버전 캐시 사고 방지 — 캐시명에 버전 박아서 상시 무효화 가능하게).
    HTML/chart.json은 network-first(항상 최신 시도, 실패시만 캐시 폴백) — 차트 데이터가
    낡은 채로 굳는 사고를 막는다. YouTube/Google API는 SW가 손대지 않음(BYPASS). */
-const VER = "2026.07.31a";
+const VER = "2026.08.05a";
 const CACHE = "ck-" + VER;
 
 const BYPASS_HOSTS = ["youtube.com", "www.youtube.com", "youtube-nocookie.com", "ytimg.com",
