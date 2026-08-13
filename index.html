@@ -358,15 +358,20 @@ function songCard(v){
 }
 
 /* ---------- 재생 / 예약 ---------- */
-function playNow(v){
+function playNow(v, resumeAt){
   if(!ytReady){ toast('플레이어 준비 중…'); return; }
   // 폴백 후보 = 이 영상 + 같은 검색결과의 다른 영상들 (막히면 자동 전환)
   const others = lastResults.filter(x=>x.id!==v.id);
   candidates = [v, ...others];
   candIdx = 0; fallbackTried = false;
-  startPlay(v);
+  startPlay(v, resumeAt);
 }
-function startPlay(v){
+// resumeAt: 키/멜로디 전환처럼 "같은 곡을 이어서" 틀 때 재생 위치(초)를 넘겨받아
+// loadVideoById의 startSeconds로 그대로 시작 지점을 지정한다 (2026-08-13).
+// 주의: 금영(KY) 임베드 플레이어는 실시간 피치 시프트 API가 없다 — 키를 바꾸면 실제로는
+// "남자키/여자키" 키워드가 붙은 '다른 녹화 영상'을 새로 검색해 트는 구조라 완전히 같은 타임라인은
+// 아니다. 그래서 "초 단위 위치"를 최대한 근접 복원하는 것이 이 구조에서 가능한 최선이다.
+function startPlay(v, resumeAt){
   current = v;
   document.getElementById('playerWrap').classList.remove('hidden');
   document.getElementById('nowPlaying').classList.remove('hidden');
@@ -374,11 +379,13 @@ function startPlay(v){
   // 자동재생 정책 우회: 음소거로 시작 → 재생 시작되면 onStateChange에서 소리 켜기
   // (폴백·예약곡은 제스처 밖에서 재생돼 소리 있으면 막히므로 필수)
   try{ player.mute(); }catch(e){}
-  player.loadVideoById(v.id);
+  if(resumeAt && resumeAt > 0){ player.loadVideoById(v.id, resumeAt); }
+  else { player.loadVideoById(v.id); }
   player.playVideo();
   requestWake();
   document.getElementById('livePanel').classList.remove('hidden');
   renderLivePanel();
+  if(resumeAt && resumeAt > 0) toast(`⏱ ${fmtTime(resumeAt)}부터 이어서 재생`);
 }
 function closePlayer(){
   try{ player.stopVideo(); }catch(e){}
@@ -539,7 +546,7 @@ async function fetchFirst(title){
     return items;
   }catch(e){ return null; }
 }
-async function playSong(title){ lastQuery = title; toast('불러오는 중…'); const items = await fetchFirst(title); if(items&&items.length){ lastResults = items; playNow(items[0]); } else toast('영상을 못 찾았어요 😢'); }
+async function playSong(title, resumeAt){ lastQuery = title; toast('불러오는 중…'); const items = await fetchFirst(title); if(items&&items.length){ lastResults = items; playNow(items[0], resumeAt); } else toast('영상을 못 찾았어요 😢'); }
 async function queueSong(title){ const items = await fetchFirst(title); if(items&&items.length){ if(!lastResults.length) lastResults = items; addQueue(items[0]); } else toast('영상을 못 찾았어요 😢'); }
 async function favSong(title){ const items = await fetchFirst(title); if(items&&items.length){ const v=items[0]; let favs=LS.favs(); if(favs.some(f=>f.id===v.id)){ toast('이미 애창곡이에요'); } else { favs.unshift(v); LS.setFavs(favs); toast('⭐ 애창곡에 담았어요'); } } else toast('영상을 못 찾았어요 😢'); }
 function setKey(mode){
@@ -547,8 +554,13 @@ function setKey(mode){
   // 2026-08-05: 셀렉터가 melBtn까지 같이 잡아서(멜로디 버튼도 class="keyBtn") 키를 누를 때마다
   // 멜로디 ON 하이라이트가 엉뚱하게 꺼지던 버그 — data-key 속성이 있는 "키" 버튼만 골라 갱신
   document.querySelectorAll('.keyBtn[data-key]').forEach(b=> b.classList.toggle('active', b.dataset.key===keyMode));
-  // 재생 중이면 현재 곡을 새 키 버전으로 즉시 전환
-  if(current && lastQuery){ playSong(lastQuery); }
+  // 재생 중이면 현재 곡을 새 키 버전으로 전환 — 2026-08-13: 처음부터 다시 시작하지 않도록
+  // 전환 직전 재생 위치를 저장해서 새 영상 로드시 그 위치로 이어 튼다 (best-effort, 위 startPlay 주석 참고)
+  if(current && lastQuery){
+    let resumeAt = 0;
+    try{ resumeAt = player.getCurrentTime() || 0; }catch(e){}
+    playSong(lastQuery, resumeAt);
+  }
 }
 function renderChart(){
   document.getElementById('chartHint').textContent = (chartType==='new'
@@ -596,7 +608,12 @@ document.getElementById('melBtn').onclick = ()=>{
   b.textContent = melodyOn ? '🎹 멜로디 ON' : '🎹 멜로디 OFF';
   b.classList.toggle('active', melodyOn);
   toast(melodyOn ? '멜로디 가이드 있는 반주로 불러요' : '멜로디 없는 MR로 불러요');
-  if(current && lastQuery){ playSong(lastQuery); }
+  // 2026-08-13: 키 전환과 동일하게 현재 위치를 저장했다가 새 영상에서 이어 재생
+  if(current && lastQuery){
+    let resumeAt = 0;
+    try{ resumeAt = player.getCurrentTime() || 0; }catch(e){}
+    playSong(lastQuery, resumeAt);
+  }
 };
 (function(){ const b=document.getElementById('melBtn'); if(!melodyOn){ b.textContent='🎹 멜로디 OFF'; b.classList.remove('active'); } })();
 document.getElementById('btnSearch').onclick = ()=>{ const q=document.getElementById('q').value.trim(); if(q) search(q); };
@@ -611,6 +628,7 @@ document.getElementById('btnRefresh').onclick = ()=>{ toast('새로고침 중…
 
 /* ---------- 유틸 ---------- */
 function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fmtTime(sec){ sec = Math.max(0, Math.floor(sec||0)); const m = Math.floor(sec/60), s = sec%60; return `${m}:${String(s).padStart(2,'0')}`; }
 function decode(s){ const t=document.createElement('textarea'); t.innerHTML=s; return t.value; }
 let toastT;
 function toast(m){ const e=document.getElementById('toast'); e.textContent=m; e.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>e.classList.remove('show'),1800); }
